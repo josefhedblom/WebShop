@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 
 public class Repository {
@@ -13,6 +14,26 @@ public class Repository {
             p.load(fis);
         } catch(IOException e){
             e.printStackTrace();
+        }
+    }
+
+    public void addToCart(int costumerId, int shoeId) {
+        try (Connection connection = DriverManager.getConnection(
+                p.getProperty("url"),
+                p.getProperty("user"),
+                p.getProperty("password"));
+
+             CallableStatement statement = connection.prepareCall("{CALL addToCart(?,?,?,?)}")
+        ) {
+
+            statement.setInt(1, costumerId);
+            statement.setInt(2, shoeId);
+            statement.setNull(3, java.sql.Types.NULL);
+            statement.registerOutParameter(4, java.sql.Types.INTEGER);
+
+            statement.executeQuery();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -62,52 +83,68 @@ public class Repository {
         }
     }
 
-    public boolean isRegistered(String email, String password) {
+    public Optional<Customer> getCustomer(String email, String password) {
         try (Connection connection = DriverManager.getConnection(
                 p.getProperty("url"),
                 p.getProperty("user"),
                 p.getProperty("password"));
 
-             PreparedStatement statement = connection.prepareStatement("SELECT customer_id FROM Customer WHERE email = ? AND password_hash = ?;")
+             PreparedStatement statement = connection.prepareStatement("select \n" +
+                     "    customer_id,\n" +
+                     "    first_name,\n" +
+                     "    last_name,\n" +
+                     "    email,\n" +
+                     "    city,\n" +
+                     "    personnummer\n" +
+                     "    from Customer\n" +
+                     "    where Customer.email = ?" +
+                     "    and Customer.password_hash = ?")
         ) {
 
             statement.setString(1, email);
             statement.setString(2, password);
             ResultSet rs = statement.executeQuery();
 
-            return rs.next();
+            if (rs.next()) {
+                Customer customer = new Customer(rs.getInt("customer_id"), rs.getString("first_name"), rs.getString("last_name"), rs.getString("email"), rs.getString("city"), rs.getString("personnummer"));
+                return Optional.of(customer);
+            } else {
+                return Optional.empty();
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void getCustomer(){
-        try (Connection con = DriverManager.getConnection(p.getProperty("url"), p.getProperty("user"), p.getProperty("password"))) {
-            String sql = "{CALL getCustomer(?)}";
-            try (CallableStatement stmt = con.prepareCall(sql)) {
-                stmt.setInt(1, 1);
-                stmt.execute();
-                System.out.println("-------------------------------------------------------------------------------------------");
-                System.out.printf("%-15s %-15s %-30s %-15s %-15s%n",
-                        "Förnamn", "Efternamn", "Epost", "Stad", "Personnummer");
-                System.out.println("-------------------------------------------------------------------------------------------");
-                ResultSet rs = stmt.getResultSet();
-                while (rs.next()) {
-                    String firstName = rs.getString("first_name");
-                    String lastName = rs.getString("last_name");
-                    String email = rs.getString("email");
-                    String city = rs.getString("city");
-                    String personnummer = rs.getString("personnummer");
 
-                    System.out.printf("%-15s %-15s %-30s %-15s %-15s%n",
-                            firstName, lastName, email, city, personnummer);
-                }
-            }
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+//    public void getCustomer(){
+//        try (Connection con = DriverManager.getConnection(p.getProperty("url"), p.getProperty("user"), p.getProperty("password"))) {
+//            String sql = "{CALL getCustomer(?)}";
+//            try (CallableStatement stmt = con.prepareCall(sql)) {
+//                stmt.setInt(1, 1);
+//                stmt.execute();
+//                System.out.println("-------------------------------------------------------------------------------------------");
+//                System.out.printf("%-15s %-15s %-30s %-15s %-15s%n",
+//                        "Förnamn", "Efternamn", "Epost", "Stad", "Personnummer");
+//                System.out.println("-------------------------------------------------------------------------------------------");
+//                ResultSet rs = stmt.getResultSet();
+//                while (rs.next()) {
+//                    String firstName = rs.getString("first_name");
+//                    String lastName = rs.getString("last_name");
+//                    String email = rs.getString("email");
+//                    String city = rs.getString("city");
+//                    String personnummer = rs.getString("personnummer");
+//
+//                    System.out.printf("%-15s %-15s %-30s %-15s %-15s%n",
+//                            firstName, lastName, email, city, personnummer);
+//                }
+//            }
+//
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
 
     public void getCustomerOrderHistory(int id){
         try (Connection con = DriverManager.getConnection(p.getProperty("url"), p.getProperty("user"), p.getProperty("password"))) {
