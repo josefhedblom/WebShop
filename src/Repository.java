@@ -17,7 +17,66 @@ public class Repository {
         }
     }
 
-    public void addToCart(int costumerId, int shoeId) {
+    public List<OrderDetail> getCart(int costumerId) {
+        try (Connection connection = DriverManager.getConnection(
+                p.getProperty("url"),
+                p.getProperty("user"),
+                p.getProperty("password"));
+
+             PreparedStatement statement = connection.prepareStatement("SELECT \n" +
+                     "    Shoe.shoe_id,\n" +
+                     "    Brand.brand_name,\n" +
+                     "    Model.model_name,\n" +
+                     "    Color.color_name,\n" +
+                     "    Category.category_name,\n" +
+                     "    GenderCategory.gender_category_type,\n" +
+                     "    Shoe.size,\n" +
+                     "    Shoe.price,\n" +
+                     "    Shoe.stock,\n" +
+                     "    `Order`.order_status,\n" +
+                     "    OrderDetails.quantity,\n" +
+                     "    `Order`.order_id\n" +
+                     "FROM OrderDetails\n" +
+                     "    INNER JOIN Shoe ON OrderDetails.shoe_id = Shoe.shoe_id\n" +
+                     "    INNER JOIN Brand ON Shoe.brand_id = Brand.brand_id\n" +
+                     "    INNER JOIN Model ON Shoe.model_id = Model.model_id\n" +
+                     "    INNER JOIN Color ON Shoe.color_id = Color.color_id\n" +
+                     "    INNER JOIN Category ON Shoe.category_id = Category.category_id\n" +
+                     "    INNER JOIN GenderCategory ON Shoe.gender_category_id = GenderCategory.gender_category_id\n" +
+                     "    INNER JOIN `Order` ON OrderDetails.order_id = `Order`.order_id\n" +
+                     "    INNER JOIN Customer ON `Order`.customer_id = Customer.customer_id\n" +
+                     "WHERE Customer.customer_id = ? \n" +
+                     "AND `Order`.order_status = 'AKTIV'\n");
+        ) {
+
+            statement.setInt(1, costumerId);
+
+            ResultSet rs = statement.executeQuery();
+
+            List<OrderDetail> orderDetails = new ArrayList<>();
+            while (rs.next()) {
+                OrderDetail orderDetail = new OrderDetail( rs.getInt("Order.order_id"),
+                        new Shoe(rs.getInt("Shoe.shoe_id"),
+                            rs.getString("Brand.brand_name"),
+                            rs.getString("Model.model_name"),
+                            rs.getString("Color.color_name"),
+                            rs.getString("Category.category_name"),
+                            rs.getString("GenderCategory.gender_category_type"),
+                            rs.getInt("Shoe.size"),
+                            rs.getDouble("Shoe.price"),
+                            rs.getInt("Shoe.stock")),
+                        rs.getInt("OrderDetails.quantity"));
+
+                orderDetails.add(orderDetail);
+            }
+
+            return orderDetails;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void addToCart(int costumerId, int shoeId) throws SQLException {
         try (Connection connection = DriverManager.getConnection(
                 p.getProperty("url"),
                 p.getProperty("user"),
@@ -32,8 +91,6 @@ public class Repository {
             statement.registerOutParameter(4, java.sql.Types.INTEGER);
 
             statement.executeQuery();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
         }
     }
 
