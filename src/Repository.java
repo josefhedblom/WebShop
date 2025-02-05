@@ -1,6 +1,8 @@
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 public class Repository {
@@ -11,6 +13,52 @@ public class Repository {
             p.load(fis);
         } catch(IOException e){
             e.printStackTrace();
+        }
+    }
+
+    public List<Shoe> getShoes() {
+        try (Connection connection = DriverManager.getConnection(
+                p.getProperty("url"),
+                p.getProperty("user"),
+                p.getProperty("password"));
+
+             PreparedStatement statement = connection.prepareStatement("SELECT \n" +
+                     "        shoe_id AS 'id',\n" +
+                     "        Brand.brand_name AS 'brand',\n" +
+                     "        Model.model_name AS 'model',\n" +
+                     "        Color.color_name AS 'color',\n" +
+                     "        Category.category_name AS 'category',\n" +
+                     "        GenderCategory.gender_category_type AS 'gender',\n" +
+                     "        size AS 'size',\n" +
+                     "        price AS 'price',\n" +
+                     "        stock AS 'stock'\n" +
+                     "    FROM Shoe\n" +
+                     "    INNER JOIN Brand ON Shoe.brand_id = Brand.brand_id\n" +
+                     "    INNER JOIN Model ON Shoe.model_id = Model.model_id\n" +
+                     "    INNER JOIN Color ON Shoe.color_id = Color.color_id\n" +
+                     "    INNER JOIN Category ON Shoe.category_id = Category.category_id\n" +
+                     "    INNER JOIN GenderCategory ON Shoe.gender_category_id = GenderCategory.gender_category_id")
+        ) {
+            ResultSet rs = statement.executeQuery();
+
+            List<Shoe> shoes = new ArrayList<>();
+            while (rs.next()) {
+                Shoe shoe = new Shoe(rs.getInt("id"),
+                        rs.getString("brand"),
+                        rs.getString("model"),
+                        rs.getString("color"),
+                        rs.getString("category"),
+                        rs.getString("gender"),
+                        rs.getInt("size"),
+                        rs.getDouble("price"),
+                        rs.getInt("stock"));
+
+                shoes.add(shoe);
+            }
+
+            return shoes;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
