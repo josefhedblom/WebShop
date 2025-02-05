@@ -14,6 +14,25 @@ public class Repository {
         }
     }
 
+    public boolean isRegistered(String email, String password) {
+        try (Connection connection = DriverManager.getConnection(
+                p.getProperty("url"),
+                p.getProperty("user"),
+                p.getProperty("password"));
+
+             PreparedStatement statement = connection.prepareStatement("SELECT customer_id FROM Customer WHERE email = ? AND password_hash = ?;")
+        ) {
+
+            statement.setString(1, email);
+            statement.setString(2, password);
+            ResultSet rs = statement.executeQuery();
+
+            return rs.next();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void getCustomer(){
         try (Connection con = DriverManager.getConnection(p.getProperty("url"), p.getProperty("user"), p.getProperty("password"))) {
             String sql = "{CALL getCustomer(?)}";
